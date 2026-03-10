@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  backend:
+    build: ./backend
+    container_name: dashboard-backend
+    ports:
+      - "8080:8080"
+    restart: always
+
+  frontend:
+    build: 
+      context: ./frontend
+      args:
+        # TODO: Replace 'YOUR_VPS_IP' with your actual VPS public IP address before running on the server
+        VITE_WS_URL: "ws://YOUR_VPS_IP:8080" 
+    container_name: dashboard-frontend
+    ports:
+      - "80:80"
+    restart: always
+    depends_on:
+      - backend
