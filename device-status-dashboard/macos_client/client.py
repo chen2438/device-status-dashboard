@@ -4,17 +4,62 @@ import psutil
 import subprocess
 import websocket
 import threading
+import os
+import plistlib
+import base64
 
+# SERVER_URL = "ws://status.vayki.com:8080"
 SERVER_URL = "ws://localhost:8080"
 DEVICE_ID = "macos"
 
-def get_active_app():
+last_app_path = None
+last_icon_base64 = None
+
+def get_active_app_info():
+    global last_app_path, last_icon_base64
+    app_name = "Unknown"
+    
     try:
-        script = 'tell application "System Events" to get name of first application process whose frontmost is true'
+        script = '''
+        tell application "System Events"
+            set frontApp to first application process whose frontmost is true
+            set appName to name of frontApp
+            try
+                set appPath to POSIX path of (application file of frontApp)
+            on error
+                set appPath to ""
+            end try
+            return appName & "|||" & appPath
+        end tell
+        '''
         result = subprocess.check_output(['osascript', '-e', script], stderr=subprocess.DEVNULL)
-        return result.decode('utf-8').strip()
+        output = result.decode('utf-8').strip()
+        parts = output.split("|||")
+        app_name = parts[0]
+        app_path = parts[1] if len(parts) > 1 else ""
+        
+        if app_path != last_app_path:
+            last_app_path = app_path
+            last_icon_base64 = None
+            if app_path and os.path.exists(app_path):
+                info_plist_path = os.path.join(app_path, "Contents", "Info.plist")
+                if os.path.exists(info_plist_path):
+                    with open(info_plist_path, 'rb') as f:
+                        plist = plistlib.load(f)
+                        icon_file = plist.get('CFBundleIconFile')
+                        if icon_file:
+                            if not icon_file.endswith('.icns'):
+                                icon_file += '.icns'
+                            icns_path = os.path.join(app_path, "Contents", "Resources", icon_file)
+                            if os.path.exists(icns_path):
+                                png_path = "/tmp/device_status_app_icon.png"
+                                subprocess.check_call(['sips', '-s', 'format', 'png', icns_path, '--out', png_path, '-z', '64', '64'], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL)
+                                with open(png_path, 'rb') as img_f:
+                                    last_icon_base64 = base64.b64encode(img_f.read()).decode('utf-8')
     except Exception:
-        return "Unknown"
+        pass
+    
+    return app_name, last_icon_base64
 
 def get_system_stats():
     # Battery
@@ -35,12 +80,15 @@ def get_system_stats():
         cpu_percent = 0
         memory_percent = 0
 
+    app_name, icon_base64 = get_active_app_info()
+
     return {
         "battery": round(battery_percent),
         "powerPlugged": power_plugged,
         "cpuPercent": round(cpu_percent),
         "memoryUsedPercent": round(memory_percent),
-        "foregroundApp": get_active_app()
+        "foregroundApp": app_name,
+        "foregroundAppIcon": icon_base64
     }
 
 def on_message(ws, message):

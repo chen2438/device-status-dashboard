@@ -1,0 +1,29 @@
+# Node / JS
+node_modules/
+dist/
+.env
+.env.local
+
+# Python / macOS Client
+venv/
+__pycache__/
+*.pyc
+
+# Android
+*.iml
+.gradle/
+/local.properties
+/.idea/
+.DS_Store
+/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+local.properties
+
+# App specific
+android_client/app/build/
+android_client/.gradle/
+android_client/.idea/
+android_client/local.properties
+android_client/build/

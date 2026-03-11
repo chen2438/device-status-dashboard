@@ -140,7 +140,16 @@ function App() {
 
                 <div className="app-focus-card mac-theme">
                   <div className="app-label"><AppWindow size={14} /> Active Application</div>
-                  <div className="app-name">{deviceStates.macos.foregroundApp || 'Unknown'}</div>
+                  <div className="app-info">
+                    {deviceStates.macos.foregroundAppIcon && (
+                      <img
+                        src={`data:image/png;base64,${deviceStates.macos.foregroundAppIcon}`}
+                        alt="App Icon"
+                        className="app-icon"
+                      />
+                    )}
+                    <span className="app-name">{deviceStates.macos.foregroundApp || 'Unknown'}</span>
+                  </div>
                 </div>
 
                 <div className="last-updated">

@@ -75,7 +75,8 @@ class StatusService : Service() {
     private fun startWebSocket() {
         // NOTE: Uses 10.0.2.2 for Android Emulator to host localhost. 
         // If testing on real device on same network, user needs to change this IP.
-        val request = Request.Builder().url("ws://10.0.2.2:8080").build()
+//        val request = Request.Builder().url("ws://10.0.2.2:8080").build()
+        val request = Request.Builder().url("ws://172.19.161.181:8080").build()
         val listener = object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 Log.d("StatusService", "Connected to WS")
