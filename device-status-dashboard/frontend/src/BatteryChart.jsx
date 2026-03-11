@@ -1,16 +1,26 @@
 import { useState, useEffect, useRef } from 'react';
 
-const MAX_HISTORY = 60; // Keep 60 data points (~ 2 minutes at 2s intervals)
+const MAX_HISTORY = 1440; // 24 hours at 1-minute sampling
+const SAMPLE_INTERVAL_MS = 60 * 1000; // Store one point per minute
 
 function BatteryChart({ battery, isCharging, timestamp }) {
     const [history, setHistory] = useState([]);
     const lastTimestampRef = useRef(null);
+    const lastStoredTimeRef = useRef(0);
 
     useEffect(() => {
         if (battery == null || timestamp == null) return;
-        // Avoid duplicate entries for the same timestamp
+        // Avoid duplicate entries for the same WebSocket timestamp
         if (lastTimestampRef.current === timestamp) return;
         lastTimestampRef.current = timestamp;
+
+        // Only store a data point if enough time has passed (1 minute)
+        // Always store the very first point
+        const now = Date.now();
+        if (lastStoredTimeRef.current !== 0 && now - lastStoredTimeRef.current < SAMPLE_INTERVAL_MS) {
+            return;
+        }
+        lastStoredTimeRef.current = now;
 
         setHistory((prev) => {
             const next = [...prev, { battery, isCharging, time: timestamp }];
@@ -60,7 +70,7 @@ function BatteryChart({ battery, isCharging, timestamp }) {
     ].join(' ');
 
     // Time labels: first, middle, last
-    const fmt = (ts) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const fmt = (ts) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const timeLabels = [
         { x: toX(0), label: fmt(history[0].time) },
         { x: toX(Math.floor(history.length / 2)), label: fmt(history[Math.floor(history.length / 2)].time) },
