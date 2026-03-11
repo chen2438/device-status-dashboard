@@ -61,6 +61,15 @@ function App() {
     return Date.now() - timestamp > 30000; // 30 seconds
   };
 
+  const formatDuration = (seconds) => {
+    if (seconds == null) return '';
+    if (seconds < 60) return `${Math.floor(seconds)}s`;
+    const m = Math.floor(seconds / 60) % 60;
+    const h = Math.floor(seconds / 3600);
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+  };
+
   return (
     <div className="dashboard-container">
       <div className="background-shapes">
@@ -222,7 +231,14 @@ function App() {
                         />
                       )
                     )}
-                    <span className="app-name highlight-text">{deviceStates.android.foregroundApp || 'None'}</span>
+                    <div className="app-name-container">
+                      <span className="app-name highlight-text">{deviceStates.android.foregroundApp || 'None'}</span>
+                      {deviceStates.android.foregroundAppDuration != null && (
+                        <span className="app-duration">
+                          {formatDuration(deviceStates.android.foregroundAppDuration)}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 

@@ -38,6 +38,8 @@ class StatusService : Service() {
     private var isWsConnected = false
     private var wakeLock: PowerManager.WakeLock? = null
     private var lastForegroundPackage: String = ""
+    private var lastSentForegroundApp: String = ""
+    private var foregroundAppStartTime: Long = System.currentTimeMillis()
 
     private val updateRunnable = object : Runnable {
         override fun run() {
@@ -136,11 +138,20 @@ class StatusService : Service() {
         val foregroundApp = if (isScreenLocked) "锁屏" else getAppName(foregroundPackage)
         val foregroundAppIcon = if (isScreenLocked) null else getAppIconBase64(foregroundPackage)
 
+        // Track duration
+        val now = System.currentTimeMillis()
+        if (foregroundApp != lastSentForegroundApp) {
+            lastSentForegroundApp = foregroundApp
+            foregroundAppStartTime = now
+        }
+        val durationSecs = (now - foregroundAppStartTime) / 1000
+
         val state = JSONObject().apply {
             put("battery", batteryLevel)
             put("isCharging", isCharging)
             put("isScreenLocked", isScreenLocked)
             put("foregroundApp", foregroundApp)
+            put("foregroundAppDuration", durationSecs)
             if (foregroundAppIcon != null) {
                 put("foregroundAppIcon", foregroundAppIcon)
             }

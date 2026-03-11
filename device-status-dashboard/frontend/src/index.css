@@ -458,6 +458,13 @@ h1 {
   text-transform: uppercase;
 }
 
+.app-name-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  overflow: hidden;
+}
+
 .app-name {
   font-size: 1.25rem;
   font-weight: 500;
@@ -465,6 +472,16 @@ h1 {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.app-duration {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.1);
+  padding: 2px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
 }
 
 .app-info {
