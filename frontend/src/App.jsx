@@ -205,14 +205,6 @@ function App() {
               <div className="empty-state">Waiting for device data...</div>
             ) : (
               <div className="metrics-layout">
-                <BatteryChart
-                  battery={deviceStates.android.battery}
-                  isCharging={deviceStates.android.isCharging}
-                  batteryCurrent={deviceStates.android.batteryCurrent}
-                  timestamp={deviceStates.android.timestamp}
-                  initialHistory={androidBatteryHistory}
-                />
-
                 {deviceStates.android.network && (
                   <div className="network-info-card">
                     <div className="network-type-row">
@@ -240,6 +232,14 @@ function App() {
                     </div>
                   </div>
                 )}
+
+                <BatteryChart
+                  battery={deviceStates.android.battery}
+                  isCharging={deviceStates.android.isCharging}
+                  batteryCurrent={deviceStates.android.batteryCurrent}
+                  timestamp={deviceStates.android.timestamp}
+                  initialHistory={androidBatteryHistory}
+                />
 
                 <div className={`app-focus-card ${deviceStates.android.isScreenLocked ? 'locked-theme' : 'android-theme'}`}>
                   <div className="app-label"><AppWindow size={14} /> Foreground App</div>
