@@ -12,6 +12,10 @@ import android.provider.Settings
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import android.Manifest
+import android.content.pm.PackageManager
 
 class MainActivity : AppCompatActivity() {
 
@@ -28,6 +32,15 @@ class MainActivity : AppCompatActivity() {
             // Request Usage Access
             startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
             // Request display over other apps or others if needed
+        }
+
+        val btnLocation = findViewById<Button>(R.id.btnLocation)
+        btnLocation.setOnClickListener {
+            ActivityCompat.requestPermissions(
+                this,
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION),
+                1001
+            )
         }
 
         btnBattery.setOnClickListener {
@@ -73,6 +86,11 @@ class MainActivity : AppCompatActivity() {
         if (pm.isIgnoringBatteryOptimizations(packageName)) {
             findViewById<Button>(R.id.btnBattery).text = "Battery Optimization Disabled ✓"
             findViewById<Button>(R.id.btnBattery).isEnabled = false
+        }
+
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            findViewById<Button>(R.id.btnLocation).text = "Location Permission Granted ✓"
+            findViewById<Button>(R.id.btnLocation).isEnabled = false
         }
     }
 }

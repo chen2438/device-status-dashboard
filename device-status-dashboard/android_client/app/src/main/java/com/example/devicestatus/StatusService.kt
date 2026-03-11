@@ -18,6 +18,9 @@ import android.util.Log
 import okhttp3.*
 import org.json.JSONObject
 import android.content.pm.PackageManager
+import android.location.Location
+import android.location.LocationListener
+import android.location.LocationManager
 import java.util.concurrent.TimeUnit
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -40,6 +43,16 @@ class StatusService : Service() {
     private var lastForegroundPackage: String = ""
     private var lastSentForegroundApp: String = ""
     private var foregroundAppStartTime: Long = System.currentTimeMillis()
+    private var locationManager: LocationManager? = null
+    private var lastLocation: Location? = null
+
+    private val locationListener = object : LocationListener {
+        override fun onLocationChanged(location: Location) {
+            lastLocation = location
+        }
+        override fun onProviderEnabled(provider: String) {}
+        override fun onProviderDisabled(provider: String) {}
+    }
 
     private val updateRunnable = object : Runnable {
         override fun run() {
@@ -57,6 +70,7 @@ class StatusService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        locationManager = getSystemService(Context.LOCATION_SERVICE) as LocationManager
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -82,6 +96,24 @@ class StatusService : Service() {
         
         startWebSocket()
         
+        try {
+            // Request location updates every 5 minutes (300,000 ms) and 0 meters
+            locationManager?.requestLocationUpdates(
+                LocationManager.GPS_PROVIDER,
+                300000L,
+                0f,
+                locationListener
+            )
+            locationManager?.requestLocationUpdates(
+                LocationManager.NETWORK_PROVIDER,
+                300000L,
+                0f,
+                locationListener
+            )
+        } catch (e: SecurityException) {
+            Log.e("StatusService", "Location permission denied", e)
+        }
+
         isRunning = true
         handler.post(updateRunnable)
 
@@ -97,6 +129,11 @@ class StatusService : Service() {
             if (it.isHeld) {
                 it.release()
             }
+        }
+        try {
+            locationManager?.removeUpdates(locationListener)
+        } catch (e: SecurityException) {
+            // ignore
         }
     }
 
@@ -154,6 +191,12 @@ class StatusService : Service() {
             put("foregroundAppDuration", durationSecs)
             if (foregroundAppIcon != null) {
                 put("foregroundAppIcon", foregroundAppIcon)
+            }
+            lastLocation?.let { loc ->
+                put("location", JSONObject().apply {
+                    put("lat", loc.latitude)
+                    put("lng", loc.longitude)
+                })
             }
         }
 

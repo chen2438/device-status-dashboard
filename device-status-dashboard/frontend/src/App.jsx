@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Monitor, Smartphone, Battery, BatteryCharging, Cpu, HardDrive, AppWindow, Wifi, WifiOff, Lock } from 'lucide-react';
 import BatteryChart from './BatteryChart';
+import LocationMap from './LocationMap';
 
 function App() {
   const [deviceStates, setDeviceStates] = useState({});
@@ -241,6 +242,8 @@ function App() {
                     </div>
                   </div>
                 </div>
+
+                <LocationMap location={deviceStates.android.location} />
 
                 <div className="last-updated">
                   Last Update: {formatDate(deviceStates.android.timestamp)}

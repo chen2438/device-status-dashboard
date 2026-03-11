@@ -634,6 +634,52 @@ h1 {
   font-size: 0.875rem;
 }
 
+/* Location Map Styles */
+.location-map-wrapper {
+  margin: 1.5rem 0 0 0;
+  border-radius: 16px;
+  overflow: hidden;
+  height: 160px;
+  position: relative;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.location-map-container {
+  height: 100%;
+  width: 100%;
+  z-index: 1;
+  /* Keep leaflet under our overlay */
+}
+
+/* Fix leaflet z-index issues with glass UI */
+.leaflet-container {
+  background: transparent !important;
+  font-family: 'Inter', system-ui, sans-serif !important;
+}
+
+.leaflet-control-container {
+  display: none !important;
+  /* Hide zoom controls for cleaner look */
+}
+
+.location-map-overlay {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  padding: 4px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  z-index: 1000;
+  pointer-events: none;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .devices-grid {
