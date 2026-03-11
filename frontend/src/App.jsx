@@ -94,7 +94,7 @@ function App() {
             <Monitor size={28} />
             <Smartphone size={20} className="logo-phone-icon" />
           </div>
-          <h1>Ecosystem Dashboard</h1>
+          <h1>Device Status Dashboard</h1>
         </div>
         <div className="header-right">
           <button className="changelog-btn" onClick={() => setChangelogOpen(true)}>

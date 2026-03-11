@@ -273,13 +273,15 @@ class StatusService : Service() {
             if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
                 networkType = "wifi"
                 try {
-                    // Modern approach: get WifiInfo from TransportInfo (Android 12+)
-                    val transportInfo = caps.transportInfo
-                    if (transportInfo is android.net.wifi.WifiInfo) {
-                        val ssid = transportInfo.ssid?.replace("\"", "") ?: ""
-                        if (ssid.isNotEmpty() && ssid != "<unknown ssid>") {
-                            networkName = ssid
-                            cachedWifiSsid = ssid
+                    // Modern approach: get WifiInfo from TransportInfo (Android 12+, API 29+)
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                        val transportInfo = caps.transportInfo
+                        if (transportInfo is android.net.wifi.WifiInfo) {
+                            val ssid = transportInfo.ssid?.replace("\"", "") ?: ""
+                            if (ssid.isNotEmpty() && ssid != "<unknown ssid>") {
+                                networkName = ssid
+                                cachedWifiSsid = ssid
+                            }
                         }
                     }
                     // Fallback: try deprecated WifiManager
