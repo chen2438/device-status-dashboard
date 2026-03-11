@@ -31,7 +31,7 @@ function LocationMap({ location }) {
         <div className="location-map-wrapper">
             <MapContainer
                 center={[lat, lng]}
-                zoom={13}
+                zoom={16}
                 scrollWheelZoom={false}
                 className="location-map-container"
                 attributionControl={false}
