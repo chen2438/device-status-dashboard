@@ -55,6 +55,7 @@ class StatusService : Service() {
     private var lastTxBytes: Long = TrafficStats.getTotalTxBytes()
     private var lastRxBytes: Long = TrafficStats.getTotalRxBytes()
     private var lastTrafficTimestamp: Long = System.currentTimeMillis()
+    private var cachedWifiSsid: String = ""
 
     private val locationListener = object : LocationListener {
         override fun onLocationChanged(location: Location) {
@@ -272,18 +273,55 @@ class StatusService : Service() {
             if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
                 networkType = "wifi"
                 try {
-                    val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
-                    val wifiInfo = wifiManager.connectionInfo
-                    networkName = wifiInfo.ssid?.replace("\"", "") ?: "Unknown"
-                    if (networkName == "<unknown ssid>") networkName = "Unknown"
+                    // Modern approach: get WifiInfo from TransportInfo (Android 12+)
+                    val transportInfo = caps.transportInfo
+                    if (transportInfo is android.net.wifi.WifiInfo) {
+                        val ssid = transportInfo.ssid?.replace("\"", "") ?: ""
+                        if (ssid.isNotEmpty() && ssid != "<unknown ssid>") {
+                            networkName = ssid
+                            cachedWifiSsid = ssid
+                        }
+                    }
+                    // Fallback: try deprecated WifiManager
+                    if (networkName.isEmpty()) {
+                        val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+                        val wifiInfo = wifiManager.connectionInfo
+                        val ssid = wifiInfo.ssid?.replace("\"", "") ?: ""
+                        if (ssid.isNotEmpty() && ssid != "<unknown ssid>") {
+                            networkName = ssid
+                            cachedWifiSsid = ssid
+                        }
+                    }
+                    // Last resort: use cache
+                    if (networkName.isEmpty() && cachedWifiSsid.isNotEmpty()) {
+                        networkName = cachedWifiSsid
+                    }
+                    if (networkName.isEmpty()) networkName = "Unknown"
                 } catch (e: Exception) {
-                    networkName = "Unknown"
+                    networkName = if (cachedWifiSsid.isNotEmpty()) cachedWifiSsid else "Unknown"
                 }
             } else if (caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
                 networkType = "cellular"
                 try {
                     val tm = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
-                    networkName = tm.networkOperatorName ?: "Unknown"
+                    // Use the data SIM's subscription for dual-SIM phones
+                    val dataSubId = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        android.telephony.SubscriptionManager.getDefaultDataSubscriptionId()
+                    } else {
+                        -1
+                    }
+                    val dataTm = if (dataSubId > 0 && Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                        tm.createForSubscriptionId(dataSubId)
+                    } else {
+                        tm
+                    }
+                    val operatorName = dataTm.networkOperatorName ?: ""
+                    val simName = dataTm.simOperatorName ?: ""
+                    networkName = when {
+                        operatorName.isNotEmpty() -> operatorName
+                        simName.isNotEmpty() -> simName
+                        else -> "Unknown"
+                    }
                 } catch (e: Exception) {
                     networkName = "Unknown"
                 }
