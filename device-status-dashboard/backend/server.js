@@ -1,5 +1,7 @@
 const WebSocket = require('ws');
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 
 const PORT = process.env.PORT || 8080;
 const MAX_BATTERY_HISTORY = 1440; // 24 hours at 1-minute sampling
@@ -15,10 +17,53 @@ const wss = new WebSocket.Server({ server });
 // Store the latest state of devices
 const deviceStates = {};
 
+const DATA_DIR = path.join(__dirname, 'data');
+const DATA_FILE = path.join(DATA_DIR, 'battery_history.json');
+
 // Store battery history per device: { 'android': [ { battery, isCharging, time }, ... ] }
-const batteryHistory = {};
+let batteryHistory = {};
 // Track last stored time per device for 1-minute dedup
 const lastBatteryStoredTime = {};
+
+// Ensure data directory exists
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+// Load history from file on startup
+function loadBatteryHistory() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const data = fs.readFileSync(DATA_FILE, 'utf8');
+      batteryHistory = JSON.parse(data);
+      console.log('Loaded battery history from file');
+
+      // Initialize last stored time for each device to its most recent entry
+      for (const [deviceId, history] of Object.entries(batteryHistory)) {
+        if (history && history.length > 0) {
+          lastBatteryStoredTime[deviceId] = history[history.length - 1].time;
+        }
+      }
+    }
+  } catch (err) {
+    console.error('Failed to load battery history:', err);
+    // Reset if file is corrupted
+    batteryHistory = {};
+  }
+}
+
+// Save history to file
+function saveBatteryHistory() {
+  try {
+    fs.writeFile(DATA_FILE, JSON.stringify(batteryHistory), 'utf8', (err) => {
+      if (err) console.error('Failed to save battery history to file:', err);
+    });
+  } catch (err) {
+    console.error('Failed to trigger save:', err);
+  }
+}
+
+loadBatteryHistory();
 
 function recordBatteryHistory(deviceId, state) {
   const now = Date.now();
@@ -44,6 +89,9 @@ function recordBatteryHistory(deviceId, state) {
       batteryHistory[deviceId].length - MAX_BATTERY_HISTORY
     );
   }
+
+  // Persist to disk
+  saveBatteryHistory();
 }
 
 function broadcastState() {
