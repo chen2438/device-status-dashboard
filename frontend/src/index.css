@@ -687,6 +687,72 @@ h1 {
   pointer-events: none;
 }
 
+/* Network Info Card */
+.network-info-card {
+  background: rgba(0, 0, 0, 0.15);
+  border-radius: 16px;
+  padding: 0.75rem 1.25rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.network-type-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.network-icon.wifi {
+  color: var(--accent-blue);
+}
+
+.network-icon.cellular {
+  color: var(--accent-green);
+}
+
+.network-icon.offline {
+  color: #ef4444;
+}
+
+.network-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.network-name {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.08);
+  padding: 2px 8px;
+  border-radius: 10px;
+}
+
+.network-speed-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.speed-item {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+
+.speed-item.upload {
+  color: #f59e0b;
+}
+
+.speed-item.download {
+  color: #3b82f6;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .devices-grid {

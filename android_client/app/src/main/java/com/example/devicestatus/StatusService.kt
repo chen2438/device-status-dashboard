@@ -21,6 +21,11 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationListener
 import android.location.LocationManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.TrafficStats
+import android.net.wifi.WifiManager
+import android.telephony.TelephonyManager
 import java.util.concurrent.TimeUnit
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -43,8 +48,13 @@ class StatusService : Service() {
     private var lastForegroundPackage: String = ""
     private var lastSentForegroundApp: String = ""
     private var foregroundAppStartTime: Long = System.currentTimeMillis()
+    private var lastSentIconPackage: String = ""
+    private var cachedIconBase64: String? = null
     private var locationManager: LocationManager? = null
     private var lastLocation: Location? = null
+    private var lastTxBytes: Long = TrafficStats.getTotalTxBytes()
+    private var lastRxBytes: Long = TrafficStats.getTotalRxBytes()
+    private var lastTrafficTimestamp: Long = System.currentTimeMillis()
 
     private val locationListener = object : LocationListener {
         override fun onLocationChanged(location: Location) {
@@ -174,7 +184,18 @@ class StatusService : Service() {
         val isScreenLocked = isScreenLocked()
         val foregroundPackage = if (isScreenLocked) "" else getForegroundPackage()
         val foregroundApp = if (isScreenLocked) "锁屏" else getAppName(foregroundPackage)
-        val foregroundAppIcon = if (isScreenLocked) null else getAppIconBase64(foregroundPackage)
+
+        // Only regenerate icon when the foreground package changes
+        val foregroundAppIcon: String? = if (isScreenLocked) {
+            null
+        } else if (foregroundPackage != lastSentIconPackage) {
+            val icon = getAppIconBase64(foregroundPackage)
+            lastSentIconPackage = foregroundPackage
+            cachedIconBase64 = icon
+            icon
+        } else {
+            cachedIconBase64
+        }
 
         // Track duration
         val now = System.currentTimeMillis()
@@ -200,6 +221,8 @@ class StatusService : Service() {
                     put("lng", loc.longitude)
                 })
             }
+            val networkInfo = getNetworkInfo()
+            put("network", networkInfo)
         }
 
         val payload = JSONObject().apply {
@@ -234,6 +257,57 @@ class StatusService : Service() {
             status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL
         } else {
             false // fallback for older versions
+        }
+    }
+
+    private fun getNetworkInfo(): JSONObject {
+        val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+        val network = cm.activeNetwork
+        val caps = if (network != null) cm.getNetworkCapabilities(network) else null
+
+        var networkType = "none"
+        var networkName = ""
+
+        if (caps != null) {
+            if (caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                networkType = "wifi"
+                try {
+                    val wifiManager = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+                    val wifiInfo = wifiManager.connectionInfo
+                    networkName = wifiInfo.ssid?.replace("\"", "") ?: "Unknown"
+                    if (networkName == "<unknown ssid>") networkName = "Unknown"
+                } catch (e: Exception) {
+                    networkName = "Unknown"
+                }
+            } else if (caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                networkType = "cellular"
+                try {
+                    val tm = getSystemService(Context.TELEPHONY_SERVICE) as TelephonyManager
+                    networkName = tm.networkOperatorName ?: "Unknown"
+                } catch (e: Exception) {
+                    networkName = "Unknown"
+                }
+            }
+        }
+
+        // Calculate speed
+        val now = System.currentTimeMillis()
+        val currentTx = TrafficStats.getTotalTxBytes()
+        val currentRx = TrafficStats.getTotalRxBytes()
+        val elapsed = (now - lastTrafficTimestamp).coerceAtLeast(1)
+
+        val txSpeed = ((currentTx - lastTxBytes) * 1000 / elapsed) // bytes per second
+        val rxSpeed = ((currentRx - lastRxBytes) * 1000 / elapsed) // bytes per second
+
+        lastTxBytes = currentTx
+        lastRxBytes = currentRx
+        lastTrafficTimestamp = now
+
+        return JSONObject().apply {
+            put("type", networkType)
+            put("name", networkName)
+            put("txSpeed", txSpeed)
+            put("rxSpeed", rxSpeed)
         }
     }
 

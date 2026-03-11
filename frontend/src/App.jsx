@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Monitor, Smartphone, Battery, BatteryCharging, Cpu, HardDrive, AppWindow, Wifi, WifiOff, Lock } from 'lucide-react';
+import { Monitor, Smartphone, Battery, BatteryCharging, Cpu, HardDrive, AppWindow, Wifi, WifiOff, Lock, ArrowUp, ArrowDown, Signal } from 'lucide-react';
 import BatteryChart from './BatteryChart';
 import LocationMap from './LocationMap';
 
@@ -69,6 +69,13 @@ function App() {
     const h = Math.floor(seconds / 3600);
     if (h > 0) return `${h}h ${m}m`;
     return `${m}m`;
+  };
+
+  const formatSpeed = (bytesPerSec) => {
+    if (bytesPerSec == null) return '0 B/s';
+    if (bytesPerSec < 1024) return `${bytesPerSec} B/s`;
+    if (bytesPerSec < 1024 * 1024) return `${(bytesPerSec / 1024).toFixed(1)} KB/s`;
+    return `${(bytesPerSec / (1024 * 1024)).toFixed(1)} MB/s`;
   };
 
   return (
@@ -205,6 +212,34 @@ function App() {
                   timestamp={deviceStates.android.timestamp}
                   initialHistory={androidBatteryHistory}
                 />
+
+                {deviceStates.android.network && (
+                  <div className="network-info-card">
+                    <div className="network-type-row">
+                      {deviceStates.android.network.type === 'wifi' ? (
+                        <Wifi size={16} className="network-icon wifi" />
+                      ) : deviceStates.android.network.type === 'cellular' ? (
+                        <Signal size={16} className="network-icon cellular" />
+                      ) : (
+                        <WifiOff size={16} className="network-icon offline" />
+                      )}
+                      <span className="network-label">
+                        {deviceStates.android.network.type === 'wifi' ? 'Wi-Fi' : deviceStates.android.network.type === 'cellular' ? 'Cellular' : 'No Network'}
+                      </span>
+                      {deviceStates.android.network.name && (
+                        <span className="network-name">{deviceStates.android.network.name}</span>
+                      )}
+                    </div>
+                    <div className="network-speed-row">
+                      <span className="speed-item upload">
+                        <ArrowUp size={12} /> {formatSpeed(deviceStates.android.network.txSpeed)}
+                      </span>
+                      <span className="speed-item download">
+                        <ArrowDown size={12} /> {formatSpeed(deviceStates.android.network.rxSpeed)}
+                      </span>
+                    </div>
+                  </div>
+                )}
 
                 <div className={`app-focus-card ${deviceStates.android.isScreenLocked ? 'locked-theme' : 'android-theme'}`}>
                   <div className="app-label"><AppWindow size={14} /> Foreground App</div>
