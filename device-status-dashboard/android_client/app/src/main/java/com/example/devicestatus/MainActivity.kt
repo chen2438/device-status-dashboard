@@ -6,6 +6,7 @@ import android.content.Intent
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.PowerManager
 import android.os.Process
 import android.provider.Settings
 import android.widget.Button
@@ -19,6 +20,7 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         val btnPermissions = findViewById<Button>(R.id.btnPermissions)
+        val btnBattery = findViewById<Button>(R.id.btnBattery)
         val btnStart = findViewById<Button>(R.id.btnStart)
         val btnStop = findViewById<Button>(R.id.btnStop)
 
@@ -26,6 +28,12 @@ class MainActivity : AppCompatActivity() {
             // Request Usage Access
             startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
             // Request display over other apps or others if needed
+        }
+
+        btnBattery.setOnClickListener {
+            val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS)
+            intent.data = Uri.parse("package:$packageName")
+            startActivity(intent)
         }
 
         btnStart.setOnClickListener {
@@ -59,6 +67,12 @@ class MainActivity : AppCompatActivity() {
         if (mode == AppOpsManager.MODE_ALLOWED) {
             findViewById<Button>(R.id.btnPermissions).text = "Permission Granted ✓"
             findViewById<Button>(R.id.btnPermissions).isEnabled = false
+        }
+
+        val pm = getSystemService(Context.POWER_SERVICE) as PowerManager
+        if (pm.isIgnoringBatteryOptimizations(packageName)) {
+            findViewById<Button>(R.id.btnBattery).text = "Battery Optimization Disabled ✓"
+            findViewById<Button>(R.id.btnBattery).isEnabled = false
         }
     }
 }

@@ -438,6 +438,16 @@ h1 {
   background: linear-gradient(90deg, rgba(16, 185, 129, 0.1), transparent);
 }
 
+.app-focus-card.locked-theme {
+  border-color: #f59e0b;
+  background: linear-gradient(90deg, rgba(245, 158, 11, 0.1), transparent);
+}
+
+.lock-icon {
+  color: #f59e0b;
+  filter: drop-shadow(0 0 4px rgba(245, 158, 11, 0.4));
+}
+
 .app-label {
   display: flex;
   align-items: center;

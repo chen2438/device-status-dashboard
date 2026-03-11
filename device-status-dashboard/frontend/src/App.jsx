@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Monitor, Smartphone, Battery, BatteryCharging, Cpu, HardDrive, AppWindow, Wifi, WifiOff } from 'lucide-react';
+import { Monitor, Smartphone, Battery, BatteryCharging, Cpu, HardDrive, AppWindow, Wifi, WifiOff, Lock } from 'lucide-react';
 
 function App() {
   const [deviceStates, setDeviceStates] = useState({});
@@ -196,15 +196,19 @@ function App() {
                   </div>
                 </div>
 
-                <div className="app-focus-card android-theme">
+                <div className={`app-focus-card ${deviceStates.android.isScreenLocked ? 'locked-theme' : 'android-theme'}`}>
                   <div className="app-label"><AppWindow size={14} /> Foreground App</div>
                   <div className="app-info">
-                    {deviceStates.android.foregroundAppIcon && (
-                      <img
-                        src={`data:image/png;base64,${deviceStates.android.foregroundAppIcon}`}
-                        alt="App Icon"
-                        className="app-icon"
-                      />
+                    {deviceStates.android.isScreenLocked ? (
+                      <Lock size={24} className="lock-icon" />
+                    ) : (
+                      deviceStates.android.foregroundAppIcon && (
+                        <img
+                          src={`data:image/png;base64,${deviceStates.android.foregroundAppIcon}`}
+                          alt="App Icon"
+                          className="app-icon"
+                        />
+                      )
                     )}
                     <span className="app-name highlight-text">{deviceStates.android.foregroundApp || 'None'}</span>
                   </div>

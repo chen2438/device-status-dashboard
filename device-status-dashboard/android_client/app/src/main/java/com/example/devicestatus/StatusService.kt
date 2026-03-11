@@ -13,10 +13,12 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.os.PowerManager
 import android.util.Log
 import okhttp3.*
 import org.json.JSONObject
 import android.content.pm.PackageManager
+import java.util.concurrent.TimeUnit
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.BitmapDrawable
@@ -28,14 +30,23 @@ class StatusService : Service() {
 
     private val CHANNEL_ID = "StatusServiceChannel"
     private var webSocket: WebSocket? = null
-    private val client = OkHttpClient()
+    private val client = OkHttpClient.Builder()
+        .pingInterval(30, TimeUnit.SECONDS)
+        .build()
     private val handler = Handler(Looper.getMainLooper())
     private var isRunning = false
+    private var isWsConnected = false
+    private var wakeLock: PowerManager.WakeLock? = null
+    private var lastForegroundPackage: String = ""
 
     private val updateRunnable = object : Runnable {
         override fun run() {
             if (isRunning) {
-                sendDeviceUpdate()
+                if (!isWsConnected) {
+                    startWebSocket()
+                } else {
+                    sendDeviceUpdate()
+                }
                 handler.postDelayed(this, 2000)
             }
         }
@@ -62,6 +73,11 @@ class StatusService : Service() {
         }
 
         startForeground(1, notification)
+        
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "StatusService::WakeLock")
+        wakeLock?.acquire()
+        
         startWebSocket()
         
         isRunning = true
@@ -75,6 +91,11 @@ class StatusService : Service() {
         isRunning = false
         handler.removeCallbacks(updateRunnable)
         webSocket?.close(1000, "Service stopped")
+        wakeLock?.let {
+            if (it.isHeld) {
+                it.release()
+            }
+        }
     }
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -89,9 +110,17 @@ class StatusService : Service() {
         val listener = object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 Log.d("StatusService", "Connected to WS")
+                isWsConnected = true
+            }
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                Log.d("StatusService", "WS Closed")
+                isWsConnected = false
+                this@StatusService.webSocket = null
             }
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 Log.e("StatusService", "WS Error", t)
+                isWsConnected = false
+                this@StatusService.webSocket = null
             }
         }
         webSocket = client.newWebSocket(request, listener)
@@ -102,13 +131,15 @@ class StatusService : Service() {
 
         val batteryLevel = getBatteryLevel()
         val isCharging = isBatteryCharging()
-        val foregroundPackage = getForegroundPackage()
-        val foregroundApp = getAppName(foregroundPackage)
-        val foregroundAppIcon = getAppIconBase64(foregroundPackage)
+        val isScreenLocked = isScreenLocked()
+        val foregroundPackage = if (isScreenLocked) "" else getForegroundPackage()
+        val foregroundApp = if (isScreenLocked) "锁屏" else getAppName(foregroundPackage)
+        val foregroundAppIcon = if (isScreenLocked) null else getAppIconBase64(foregroundPackage)
 
         val state = JSONObject().apply {
             put("battery", batteryLevel)
             put("isCharging", isCharging)
+            put("isScreenLocked", isScreenLocked)
             put("foregroundApp", foregroundApp)
             if (foregroundAppIcon != null) {
                 put("foregroundAppIcon", foregroundAppIcon)
@@ -129,6 +160,11 @@ class StatusService : Service() {
         return batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
     }
 
+    private fun isScreenLocked(): Boolean {
+        val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
+        return !powerManager.isInteractive
+    }
+
     private fun isBatteryCharging(): Boolean {
         val batteryManager = getSystemService(Context.BATTERY_SERVICE) as BatteryManager
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -142,7 +178,7 @@ class StatusService : Service() {
     private fun getForegroundPackage(): String {
         val usageStatsManager = getSystemService(Context.USAGE_STATS_SERVICE) as UsageStatsManager
         val time = System.currentTimeMillis()
-        val events = usageStatsManager.queryEvents(time - 1000 * 60, time) // last 1 minute
+        val events = usageStatsManager.queryEvents(time - 1000 * 60 * 5, time) // last 5 minutes
         var currentPackage = ""
 
         val event = UsageEvents.Event()
@@ -152,7 +188,14 @@ class StatusService : Service() {
                 currentPackage = event.packageName
             }
         }
-        return currentPackage
+
+        // If a foreground package was found, cache it for future use
+        if (currentPackage.isNotEmpty()) {
+            lastForegroundPackage = currentPackage
+        }
+
+        // Fall back to cached value if no recent ACTIVITY_RESUMED events found
+        return currentPackage.ifEmpty { lastForegroundPackage }
     }
 
     private fun getAppName(packageName: String): String {

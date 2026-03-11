@@ -8,8 +8,8 @@ import os
 import plistlib
 import base64
 
-# SERVER_URL = "ws://status.vayki.com:8080"
-SERVER_URL = "ws://localhost:8080"
+SERVER_URL = "ws://status.vayki.com:8080"
+# SERVER_URL = "ws://localhost:8080"
 DEVICE_ID = "macos"
 
 last_app_path = None
