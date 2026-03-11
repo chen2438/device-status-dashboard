@@ -99,7 +99,7 @@ function BatteryChart({ battery, isCharging, batteryCurrent, timestamp, initialH
     let currentString = '';
     if (batteryCurrent != null) {
         const sign = batteryCurrent > 0 ? '+' : '';
-        currentString = `( ${sign}${batteryCurrent}mA )`;
+        currentString = `${sign}${batteryCurrent}mA`;
     }
 
     return (
