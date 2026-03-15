@@ -6,6 +6,7 @@ const OFFLINE_GAP_MS = SAMPLE_INTERVAL_MS * 2;
 
 function BatteryChart({ battery, isCharging, batteryCurrent, timestamp, initialHistory }) {
     const [history, setHistory] = useState([]);
+    const [hoveredPoint, setHoveredPoint] = useState(null);
     const lastTimestampRef = useRef(null);
     const lastStoredTimeRef = useRef(0);
     const initializedRef = useRef(false);
@@ -118,6 +119,12 @@ function BatteryChart({ battery, isCharging, batteryCurrent, timestamp, initialH
 
     // Time labels: first, middle, last
     const fmt = (ts) => new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const fmtTooltip = (ts) => new Date(ts).toLocaleString([], {
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
     const timeLabels = [
         { x: toX(minTime), label: fmt(minTime) },
         { x: toX(minTime + Math.floor(timeRange / 2)), label: fmt(minTime + Math.floor(timeRange / 2)) },
@@ -137,6 +144,37 @@ function BatteryChart({ battery, isCharging, batteryCurrent, timestamp, initialH
         currentString = `${sign}${batteryCurrent}mA`;
     }
 
+    const handlePointerMove = (event) => {
+        const rect = event.currentTarget.getBoundingClientRect();
+        const relativeX = ((event.clientX - rect.left) / rect.width) * W;
+
+        if (relativeX < PAD_L || relativeX > W - PAD_R) {
+            setHoveredPoint(null);
+            return;
+        }
+
+        let closestPoint = history[0];
+        let smallestDistance = Math.abs(toX(history[0].time) - relativeX);
+
+        for (let i = 1; i < history.length; i += 1) {
+            const point = history[i];
+            const distance = Math.abs(toX(point.time) - relativeX);
+            if (distance < smallestDistance) {
+                smallestDistance = distance;
+                closestPoint = point;
+            }
+        }
+
+        setHoveredPoint(closestPoint);
+    };
+
+    const hoverX = hoveredPoint ? toX(hoveredPoint.time) : null;
+    const hoverY = hoveredPoint ? toY(hoveredPoint.battery) : null;
+    const tooltipStyle = hoveredPoint ? {
+        left: `${Math.min(Math.max((hoverX / W) * 100, 12), 88)}%`,
+        top: `${Math.max(((hoverY - 10) / H) * 100, 4)}%`,
+    } : null;
+
     return (
         <div className="battery-chart-container">
             <div className="chart-header">
@@ -145,115 +183,145 @@ function BatteryChart({ battery, isCharging, batteryCurrent, timestamp, initialH
                     {latest.battery}% {currentString && <span className="chart-current">{currentString}</span>}
                 </span>
             </div>
-            <svg viewBox={`0 0 ${W} ${H}`} className="battery-chart-svg" preserveAspectRatio="none">
-                <defs>
-                    <linearGradient id="batteryGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor={latest.battery > 20 ? '#10b981' : '#ef4444'} stopOpacity="0.4" />
-                        <stop offset="100%" stopColor={latest.battery > 20 ? '#10b981' : '#ef4444'} stopOpacity="0.02" />
-                    </linearGradient>
-                </defs>
+            <div
+                className="battery-chart-frame"
+                onMouseMove={handlePointerMove}
+                onMouseLeave={() => setHoveredPoint(null)}
+            >
+                {hoveredPoint && (
+                    <div className="chart-tooltip" style={tooltipStyle}>
+                        <div className="chart-tooltip-battery">{hoveredPoint.battery}%</div>
+                        <div className="chart-tooltip-time">{fmtTooltip(hoveredPoint.time)}</div>
+                    </div>
+                )}
+                <svg viewBox={`0 0 ${W} ${H}`} className="battery-chart-svg" preserveAspectRatio="none">
+                    <defs>
+                        <linearGradient id="batteryGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor={latest.battery > 20 ? '#10b981' : '#ef4444'} stopOpacity="0.4" />
+                            <stop offset="100%" stopColor={latest.battery > 20 ? '#10b981' : '#ef4444'} stopOpacity="0.02" />
+                        </linearGradient>
+                    </defs>
 
-                {/* Horizontal grid lines */}
-                {yLabels.map((v) => (
-                    <line
-                        key={v}
-                        x1={PAD_L}
-                        y1={toY(v)}
-                        x2={W - PAD_R}
-                        y2={toY(v)}
-                        stroke="rgba(255,255,255,0.06)"
-                        strokeWidth="1"
-                    />
-                ))}
+                    {/* Horizontal grid lines */}
+                    {yLabels.map((v) => (
+                        <line
+                            key={v}
+                            x1={PAD_L}
+                            y1={toY(v)}
+                            x2={W - PAD_R}
+                            y2={toY(v)}
+                            stroke="rgba(255,255,255,0.06)"
+                            strokeWidth="1"
+                        />
+                    ))}
 
-                {/* Y axis labels */}
-                {yLabels.map((v) => (
-                    <text key={v} x={PAD_L - 6} y={toY(v) + 3} className="chart-axis-label" textAnchor="end">
-                        {v}
-                    </text>
-                ))}
+                    {/* Y axis labels */}
+                    {yLabels.map((v) => (
+                        <text key={v} x={PAD_L - 6} y={toY(v) + 3} className="chart-axis-label" textAnchor="end">
+                            {v}
+                        </text>
+                    ))}
 
-                {/* Offline gaps */}
-                {offlineRanges.map((range, index) => {
-                    const startX = toX(range.start);
-                    const endX = toX(range.end);
-                    const midX = (startX + endX) / 2;
-                    const minutes = Math.round(range.durationMs / 60000);
-                    const label = `Offline ${minutes}m`;
-                    const showLabel = endX - startX > 34;
+                    {/* Offline gaps */}
+                    {offlineRanges.map((range, index) => {
+                        const startX = toX(range.start);
+                        const endX = toX(range.end);
+                        const midX = (startX + endX) / 2;
+                        const minutes = Math.round(range.durationMs / 60000);
+                        const label = `Offline ${minutes}m`;
+                        const showLabel = endX - startX > 34;
 
-                    return (
-                        <g key={`${range.start}-${range.end}-${index}`}>
-                            <rect
-                                x={startX}
-                                y={PAD_T}
-                                width={Math.max(endX - startX, 2)}
-                                height={chartH}
-                                className="chart-offline-band"
-                            />
+                        return (
+                            <g key={`${range.start}-${range.end}-${index}`}>
+                                <rect
+                                    x={startX}
+                                    y={PAD_T}
+                                    width={Math.max(endX - startX, 2)}
+                                    height={chartH}
+                                    className="chart-offline-band"
+                                />
+                                <line
+                                    x1={startX}
+                                    y1={PAD_T}
+                                    x2={startX}
+                                    y2={PAD_T + chartH}
+                                    className="chart-offline-edge"
+                                />
+                                <line
+                                    x1={endX}
+                                    y1={PAD_T}
+                                    x2={endX}
+                                    y2={PAD_T + chartH}
+                                    className="chart-offline-edge"
+                                />
+                                {showLabel && (
+                                    <text x={midX} y={PAD_T + 14} className="chart-offline-label" textAnchor="middle">
+                                        {label}
+                                    </text>
+                                )}
+                            </g>
+                        );
+                    })}
+
+                    {/* Area fill */}
+                    {segmentAreaPaths.map((path, index) => (
+                        <path key={index} d={path} fill="url(#batteryGrad)" />
+                    ))}
+
+                    {/* Line */}
+                    {segmentLinePoints.map((points, index) => (
+                        <polyline
+                            key={index}
+                            points={points}
+                            fill="none"
+                            stroke={latest.battery > 20 ? '#10b981' : '#ef4444'}
+                            strokeWidth="2"
+                            strokeLinejoin="round"
+                            strokeLinecap="round"
+                        />
+                    ))}
+
+                    {hoveredPoint && (
+                        <>
                             <line
-                                x1={startX}
+                                x1={hoverX}
                                 y1={PAD_T}
-                                x2={startX}
+                                x2={hoverX}
                                 y2={PAD_T + chartH}
-                                className="chart-offline-edge"
+                                className="chart-hover-line"
                             />
-                            <line
-                                x1={endX}
-                                y1={PAD_T}
-                                x2={endX}
-                                y2={PAD_T + chartH}
-                                className="chart-offline-edge"
+                            <circle
+                                cx={hoverX}
+                                cy={hoverY}
+                                r="4"
+                                className="chart-hover-dot"
                             />
-                            {showLabel && (
-                                <text x={midX} y={PAD_T + 14} className="chart-offline-label" textAnchor="middle">
-                                    {label}
-                                </text>
-                            )}
-                        </g>
-                    );
-                })}
+                        </>
+                    )}
 
-                {/* Area fill */}
-                {segmentAreaPaths.map((path, index) => (
-                    <path key={index} d={path} fill="url(#batteryGrad)" />
-                ))}
-
-                {/* Line */}
-                {segmentLinePoints.map((points, index) => (
-                    <polyline
-                        key={index}
-                        points={points}
-                        fill="none"
-                        stroke={latest.battery > 20 ? '#10b981' : '#ef4444'}
-                        strokeWidth="2"
-                        strokeLinejoin="round"
-                        strokeLinecap="round"
+                    {/* Current value dot */}
+                    <circle
+                        cx={toX(latest.time)}
+                        cy={toY(latest.battery)}
+                        r="3"
+                        fill={latest.battery > 20 ? '#10b981' : '#ef4444'}
+                        className="chart-dot-pulse"
                     />
-                ))}
 
-                {/* Current value dot */}
-                <circle
-                    cx={toX(latest.time)}
-                    cy={toY(latest.battery)}
-                    r="3"
-                    fill={latest.battery > 20 ? '#10b981' : '#ef4444'}
-                    className="chart-dot-pulse"
-                />
-
-                {/* Time labels */}
-                {timeLabels.map((t, i) => (
-                    <text
-                        key={i}
-                        x={t.x}
-                        y={H - 4}
-                        className="chart-axis-label"
-                        textAnchor={i === 0 ? 'start' : i === timeLabels.length - 1 ? 'end' : 'middle'}
-                    >
-                        {t.label}
-                    </text>
-                ))}
-            </svg>
+                    {/* Time labels */}
+                    {timeLabels.map((t, i) => (
+                        <text
+                            key={i}
+                            x={t.x}
+                            y={H - 4}
+                            className="chart-axis-label"
+                            textAnchor={i === 0 ? 'start' : i === timeLabels.length - 1 ? 'end' : 'middle'}
+                        >
+                            {t.label}
+                        </text>
+                    ))}
+                </svg>
+            </div>
         </div>
     );
 }

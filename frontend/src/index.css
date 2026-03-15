@@ -699,6 +699,37 @@ h1 {
   display: block;
 }
 
+.battery-chart-frame {
+  position: relative;
+}
+
+.chart-tooltip {
+  position: absolute;
+  transform: translate(-50%, -100%);
+  pointer-events: none;
+  z-index: 2;
+  min-width: 88px;
+  padding: 0.45rem 0.6rem;
+  border-radius: 10px;
+  background: rgba(9, 14, 26, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.28);
+  text-align: center;
+}
+
+.chart-tooltip-battery {
+  color: var(--text-main);
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.chart-tooltip-time {
+  margin-top: 0.15rem;
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
 .chart-axis-label {
   fill: var(--text-muted);
   font-size: 8px;
@@ -721,6 +752,18 @@ h1 {
   font-family: 'Outfit', sans-serif;
   letter-spacing: 0.3px;
   text-transform: uppercase;
+}
+
+.chart-hover-line {
+  stroke: rgba(255, 255, 255, 0.24);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.chart-hover-dot {
+  fill: #f8fafc;
+  stroke: rgba(16, 185, 129, 0.95);
+  stroke-width: 2;
 }
 
 .chart-dot-pulse {
